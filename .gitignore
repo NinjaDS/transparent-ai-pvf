@@ -1,2 +1,6 @@
 # Private reports — never push these
 reports/curlsmith/
+
+# Python cache
+__pycache__/
+*.pyc
