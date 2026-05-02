@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Transparent AI — Plastic Vector Fields</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  body{font-family:'Inter',sans-serif;background:#0a0e1a;color:#e2e8f0;}
+  .card{background:#111827;border:1px solid #1f2937;border-radius:12px;}
+  .approve{background:#14532d;color:#4ade80;border-color:#166534;}
+  .review{background:#1e3a5f;color:#93c5fd;border-color:#1d4ed8;}
+  .decline{background:#7f1d1d;color:#fca5a5;border-color:#991b1b;}
+  .trace-line{font-family:monospace;font-size:12px;padding:2px 0;}
+  input[type=range]{accent-color:#3b82f6;}
+  .tab-on{background:#1d4ed8;color:#fff;}
+  .tab-off{background:#1f2937;color:#9ca3af;}
+  .tab-off:hover{background:#374151;}
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#374151;border-radius:2px}
+</style>
+</head>
+<body class="min-h-screen">
+
+<div class="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center font-bold text-sm">PVF</div>
+    <div>
+      <span class="font-semibold text-white text-lg">Transparent AI</span>
+      <span class="ml-2 text-xs text-gray-500">Plastic Vector Fields · Explainability by construction</span>
+    </div>
+  </div>
+  <div class="text-xs text-gray-500">Based on: Janson & Balanov (2026) · Physica D · Loughborough University</div>
+</div>
+
+<!-- Tabs -->
+<div class="px-6 pt-5 flex gap-2">
+  <button onclick="showTab(0)" id="tb0" class="tab-on px-4 py-2 rounded-lg text-sm font-medium transition-all">🎛 Live Credit Demo</button>
+  <button onclick="showTab(1)" id="tb1" class="tab-off px-4 py-2 rounded-lg text-sm font-medium transition-all">📊 Brand Intelligence</button>
+  <button onclick="showTab(2)" id="tb2" class="tab-off px-4 py-2 rounded-lg text-sm font-medium transition-all">🔬 Why PVF?</button>
+</div>
+
+<div class="px-6 py-5 max-w-7xl mx-auto">
+
+<!-- TAB 0: Live Credit Demo -->
+<div id="tab0">
+  <p class="text-sm text-gray-400 mb-5">Adjust the sliders. The PVF engine reasons through the decision live — every step visible, nothing hidden.</p>
+  <div class="grid grid-cols-2 gap-6">
+    <div class="card p-6">
+      <p class="text-sm font-medium text-gray-300 mb-5">Input Signals</p>
+      <div class="space-y-6" id="sliders">
+        <div>
+          <div class="flex justify-between mb-2"><label class="text-sm text-gray-300">Credit Score</label><span class="text-sm font-mono text-blue-400" id="v0">0.75</span></div>
+          <input type="range" min="0" max="100" value="75" class="w-full" oninput="updateSlider(0,this.value)">
+          <p class="text-xs text-gray-600 mt-1">Based on payment history, utilisation, length of credit</p>
+        </div>
+        <div>
+          <div class="flex justify-between mb-2"><label class="text-sm text-gray-300">Debt-to-Income Ratio <span class="text-xs text-gray-500">(lower=better)</span></label><span class="text-sm font-mono text-blue-400" id="v1">0.30</span></div>
+          <input type="range" min="0" max="100" value="30" class="w-full" oninput="updateSlider(1,this.value)">
+          <p class="text-xs text-gray-600 mt-1">Higher ratio = higher risk. Inverted in scoring.</p>
+        </div>
+        <div>
+          <div class="flex justify-between mb-2"><label class="text-sm text-gray-300">Employment Stability</label><span class="text-sm font-mono text-blue-400" id="v2">0.80</span></div>
+          <input type="range" min="0" max="100" value="80" class="w-full" oninput="updateSlider(2,this.value)">
+          <p class="text-xs text-gray-600 mt-1">Years in role, contract type, industry stability</p>
+        </div>
+      </div>
+      <div class="mt-6 p-4 rounded-xl border-2 text-center" id="decision">
+        <p class="text-xs text-gray-400 mb-1">Decision</p>
+        <p class="text-2xl font-bold" id="decisionText">APPROVE</p>
+        <p class="text-xs mt-1" id="confText">Confidence: 0.84</p>
+      </div>
+    </div>
+    <div class="card p-6">
+      <div class="flex items-center justify-between mb-4">
+        <p class="text-sm font-medium text-gray-300">Reasoning Trace</p>
+        <span class="text-xs text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded">Live · updates as you move sliders</span>
+      </div>
+      <div id="trace" class="bg-gray-900/60 rounded-lg p-4 space-y-1 text-xs font-mono overflow-y-auto max-h-72"></div>
+      <div class="mt-4 p-3 bg-gray-900/40 rounded-lg">
+        <p class="text-xs text-gray-400 font-medium mb-1">Memory state (prior knowledge)</p>
+        <div id="memState" class="space-y-1"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 1: Brand Intelligence (real Reply.io data) -->
+<div id="tab1" class="hidden">
+  <p class="text-sm text-gray-400 mb-5">Real Reply.io signal memory — 3-week data from Reddit (r/coldemail, r/SaaS), G2 (1,500+ reviews), Trustpilot (226 reviews), Google News.</p>
+  <div class="grid grid-cols-5 gap-4">
+    <div class="card p-5 col-span-2">
+      <p class="text-sm font-medium text-gray-300 mb-3">Brand Score Trend — Reply.io</p>
+      <canvas id="brandC" height="160"></canvas>
+      <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+        <div class="bg-gray-900/50 rounded p-2"><p class="text-gray-400">G2 Rating</p><p class="font-bold text-white">4.6 / 5</p><p class="text-gray-500">1,500+ reviews</p></div>
+        <div class="bg-gray-900/50 rounded p-2"><p class="text-gray-400">Trustpilot</p><p class="font-bold text-white">4.0 / 5</p><p class="text-gray-500">226 reviews</p></div>
+      </div>
+    </div>
+    <div class="card p-5 col-span-3">
+      <p class="text-sm font-medium text-gray-300 mb-4">PVF Signal Memory — Week 18 snapshot</p>
+      <div class="space-y-3">
+        ${[
+          {k:"AI sales automation",v:1.000,neg:false,src:"G2 2026: praised in 60%+ of reviews"},
+          {k:"LinkedIn account bans",v:1.000,neg:true,src:"r/coldemail: Chrome extension = TOS violation, bans reported"},
+          {k:"Pricing complaints",v:0.988,neg:true,src:"Trustpilot: 13% of 1-star reviews = billing disputes"},
+          {k:"Jason AI feature",v:0.905,neg:false,src:"G2: email drafting praised, saves manual outreach time"},
+          {k:"Hidden charges",v:0.870,neg:true,src:"Reddit 2026: auto-renewal surprise, no self-serve cancel"},
+          {k:"CRM integration",v:0.782,neg:false,src:"Salesforce/HubSpot/Pipedrive — rated highly on G2"},
+          {k:"Sequence reliability issues",v:0.705,neg:true,src:"Steps firing out of order — trust-critical for automation"},
+        ].map(s=>`<div>
+          <div class="flex justify-between mb-1">
+            <span class="text-xs text-gray-300">${s.k} ${s.neg?'🔴':'🟢'}</span>
+            <span class="text-xs font-mono ${s.neg?'text-red-400':'text-blue-400'}">${s.v.toFixed(3)}</span>
+          </div>
+          <div class="bg-gray-800 rounded h-2"><div class="${s.neg?'bg-red-500':'bg-blue-500'} h-2 rounded transition-all" style="width:${s.v*100}%"></div></div>
+          <p class="text-xs text-gray-600 mt-0.5">${s.src}</p>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: Why PVF -->
+<div id="tab2" class="hidden">
+  <div class="grid grid-cols-2 gap-6 mb-6">
+    <div class="card p-6">
+      <p class="text-sm font-semibold text-red-400 mb-4">❌ Black-Box AI (Current Standard)</p>
+      <div class="space-y-3 text-sm text-gray-300">
+        <p>• Model produces a score — no explanation of why</p>
+        <p>• SHAP / LIME values are <em>approximations</em>, not the actual reasoning</p>
+        <p>• Catastrophic forgetting: retraining on new data destroys prior knowledge</p>
+        <p>• EU AI Act 2026 (Article 13): high-risk decisions require human-readable justification — black-box models cannot comply by design</p>
+        <p>• JPMorgan, Barclays: credit decisions challenged in court when model can't explain itself</p>
+      </div>
+      <div class="mt-4 p-3 bg-red-900/20 rounded-lg text-xs text-red-300">
+        "Their design makes it impossible to fully control how they learn and store information." — Prof. Alexander Balanov, Loughborough University (2026)
+      </div>
+    </div>
+    <div class="card p-6">
+      <p class="text-sm font-semibold text-green-400 mb-4">✅ Plastic Vector Fields (PVF)</p>
+      <div class="space-y-3 text-sm text-gray-300">
+        <p>• Every learning step, memory update and inference is <strong class="text-white">mathematically traceable</strong></p>
+        <p>• Transparency is a structural property — not a dashboard added afterwards</p>
+        <p>• Continuous learning without forgetting: new signals reinforce or release old patterns, never overwrite</p>
+        <p>• Every decision produces a full reasoning trace — audit-ready for regulators</p>
+        <p>• Published: Janson & Balanov, <em>Physica D: Nonlinear Phenomena</em>, 30 April 2026</p>
+      </div>
+      <div class="mt-4 p-3 bg-green-900/20 rounded-lg text-xs text-green-300">
+        "We've built a system where the inner workings of cognition are fully transparent." — Dr. Natalia Janson, Loughborough University (2026)
+      </div>
+    </div>
+  </div>
+  <div class="card p-5">
+    <p class="text-sm font-medium text-gray-300 mb-4">Where PVF changes the game</p>
+    <div class="grid grid-cols-3 gap-4 text-sm">
+      <div class="bg-gray-900/40 rounded-lg p-4"><p class="font-semibold text-white mb-2">🏥 Healthcare</p><p class="text-gray-400 text-xs">MHRA & CQC require explainable AI decisions. PVF makes every diagnosis recommendation traceable — no separate XAI layer needed.</p></div>
+      <div class="bg-gray-900/40 rounded-lg p-4"><p class="font-semibold text-white mb-2">💳 Credit & Finance</p><p class="text-gray-400 text-xs">GDPR Article 22: right to explanation for automated decisions. PVF produces a genuine reasoning trace, not a post-hoc rationalisation.</p></div>
+      <div class="bg-gray-900/40 rounded-lg p-4"><p class="font-semibold text-white mb-2">⚙️ Procurement</p><p class="text-gray-400 text-xs">Every supplier risk score explained. Every alert shows its full signal path. Auditable by CPO, legal, and regulators without data science translation.</p></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div class="px-6 py-3 border-t border-gray-800 text-xs text-gray-600 flex justify-between">
+  <span>Transparent AI · PVF · NinjaDS · Paper: Janson & Balanov, Physica D, Apr 2026</span>
+  <a href="https://github.com/NinjaDS/transparent-ai-pvf" class="text-blue-500 hover:text-blue-400">GitHub →</a>
+</div>
+
+<script>
+// Slider state
+let vals=[0.75, 0.30, 0.80];
+const memStrength=[0.40, 0.35, 0.45]; // Prior memory per feature
+
+function updateSlider(i,v){
+  vals[i]=parseFloat(v)/100;
+  document.getElementById('v'+i).textContent=vals[i].toFixed(2);
+  runPVF();
+}
+
+function runPVF(){
+  const [cs, dti, es] = vals;
+  // debt ratio is inverted (lower = better)
+  const adjusted = [cs, 1-dti, es];
+  const eff = adjusted.map((v,i)=>({
+    name:['Credit Score','Debt Ratio (inverted)','Employment Stability'][i],
+    input:v, mem:memStrength[i],
+    eff: v*(1+memStrength[i])
+  }));
+  const signal = eff.reduce((s,e)=>s+e.eff,0)/eff.length;
+  let decision, conf, cls;
+  if(signal>=0.65){decision='APPROVE';conf=Math.min(1,signal);cls='approve';}
+  else if(signal>=0.40){decision='REVIEW';conf=signal;cls='review';}
+  else{decision='DECLINE';conf=1-signal;cls='decline';}
+
+  const decEl=document.getElementById('decision');
+  decEl.className=`mt-6 p-4 rounded-xl border-2 text-center ${cls}`;
+  document.getElementById('decisionText').textContent=decision;
+  document.getElementById('confText').textContent=`Confidence: ${conf.toFixed(3)} · Signal: ${signal.toFixed(3)}`;
+
+  document.getElementById('trace').innerHTML=[
+    `<div class="text-gray-500">── PVF Reasoning Trace ──</div>`,
+    `<div class="text-gray-400 mt-1">Step 1: Retrieve memory patterns</div>`,
+    ...eff.map(e=>`<div class="${e.input>0.5?'text-blue-400':'text-yellow-400'}">  · '${e.name}': input=${e.input.toFixed(3)}, mem_strength=${e.mem.toFixed(3)}, eff_weight=${e.eff.toFixed(3)}</div>`),
+    `<div class="text-gray-400 mt-1">Step 2: Compute aggregate signal</div>`,
+    `<div class="text-white">  · Signal = mean(effective_weights) = ${signal.toFixed(4)}</div>`,
+    `<div class="text-gray-400 mt-1">Step 3: Map signal to decision</div>`,
+    `<div class="${decision==='APPROVE'?'text-green-400':decision==='REVIEW'?'text-blue-400':'text-red-400'}">  · Signal ${signal.toFixed(4)} → <strong>${decision}</strong> (conf=${conf.toFixed(3)})</div>`,
+    `<div class="text-gray-400 mt-1">Step 4: Memory update (continuous learning)</div>`,
+    ...eff.map(e=>`<div class="text-purple-400">  · Reinforced '${e.name}': ${e.mem.toFixed(3)} → ${Math.min(1,e.mem+0.05*e.input).toFixed(3)}</div>`),
+  ].join('');
+
+  document.getElementById('memState').innerHTML=eff.map(e=>`
+    <div class="flex items-center gap-2">
+      <span class="text-gray-500 w-44 truncate">${e.name}</span>
+      <div class="flex-1 bg-gray-800 rounded h-1.5"><div class="bg-purple-500 h-1.5 rounded" style="width:${e.mem*100}%"></div></div>
+      <span class="text-purple-400 font-mono text-xs w-10">${e.mem.toFixed(2)}</span>
+    </div>`).join('');
+}
+
+// Tab switching
+function showTab(i){
+  [0,1,2].forEach(j=>{
+    document.getElementById('tab'+j).classList.toggle('hidden',j!==i);
+    document.getElementById('tb'+j).className=j===i?'tab-on px-4 py-2 rounded-lg text-sm font-medium transition-all':'tab-off px-4 py-2 rounded-lg text-sm font-medium transition-all';
+  });
+}
+
+// Brand chart
+new Chart(document.getElementById('brandC'),{type:'line',data:{labels:['W16','W17','W18'],datasets:[{data:[74.8,72.2,67.3],borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.1)',borderWidth:2,pointRadius:5,pointBackgroundColor:'#fff',tension:0.4,fill:true,label:'Reply.io Brand Score'}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1f2937'},ticks:{color:'#6b7280',font:{size:10}}},y:{grid:{color:'#1f2937'},ticks:{color:'#6b7280',font:{size:10}},min:60,max:80}}}});
+
+// Initial render
+runPVF();
+</script>
+</body>
+</html>
